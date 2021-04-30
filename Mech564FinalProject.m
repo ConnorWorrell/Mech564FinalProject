@@ -10,7 +10,7 @@ drawnow
 loadingbar.Message = 'Initilizing Robot';
 
 q_2dot = [diff(theta_1(t),2);diff(theta_2(t),2);diff(theta_3(t),2)];
-q_dot  = [diff(theta_1(t));diff(theta_2(t));diff(theta_3(t))];
+q_dot  = [diff(theta_1(t),1);diff(theta_2(t),1);diff(theta_3(t),1)];
 
 d2 = 149.09/1000; %m
 d4 = 433.07/1000; %m
@@ -92,8 +92,10 @@ Position = []
 for i = 1:TotalSteps
     loadingbar.Message = sprintf('Calculating Step %d of %d',i,TotalSteps);
     loadingbar.Value = i/TotalSteps;
+    
     LinearizeSpot = [theta_1(t) == Theta(1); theta_2(t) == Theta(3) ;theta_3(t) == Theta(5);];
     [t2add,Theta,Meaning] = plotODESolve(tauTest,tau,LinearizeSpot,Theta(length(Theta(:,1)),1:6),LinerazationTimeStepSize);
+    
     Data(length(Data(:,1))+1:length(Data(:,1))+length(Theta(:,1)),1:6) = Theta;
     t = [t,t2add()'+(i-1)*LinerazationTimeStepSize];
     fprintf("T: %d D: %d",size(t,2),size(Data,1))
@@ -106,6 +108,10 @@ legend('Theta_1','Theta_2','Theta_3')
 close(loadingbar)
 close(fig)
 
+% Proof that forward kinematics function works properly
+%Data = [zeros(63,1),zeros(63,1),zeros(63,1),zeros(63,1),(0:.1:2*pi)']
+
+Position = zeros(length(Data(:,1)),3)
 for i = 1:length(Data(:,1))
     h = forwardKinematics(Data(i,1),Data(i,3),Data(i,5),d2,d4,a2,a3);
     Position = [Position; h'];
@@ -131,7 +137,7 @@ function [t,data,S] = plotODESolve(tauInput,tau,Linearization,Conditions,Lineraz
 %     grid
 end
 
-
+% testing
 
 function [h] = forwardKinematics(theta1,theta2,theta3,d2,d4,a2,a3)
 
