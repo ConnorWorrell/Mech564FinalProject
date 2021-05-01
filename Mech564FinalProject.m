@@ -1,7 +1,9 @@
-syms theta_1(t) theta_2(t) theta_3(t) real
+close all
+
+syms theta_1(t) theta_2(t) theta_3(t) %real
 %syms q_dot_1 q_dot_2 q_dot_3 real
 %syms q_2dot_1 q_2dot_2 q_2dot_3
-syms d4 d2 a2 a3 real
+syms d4 d2 a2 a3 %real
 
 fig = uifigure;
 loadingbar = uiprogressdlg(fig, 'Title', 'Progress', 'Message','1');
@@ -55,6 +57,8 @@ c313 = c133;
 c323 = c233;
 c333 = 0;
 
+clearvars c
+
 c(1,1) = c111*q_dot(1)+c211*q_dot(2)+c311*q_dot(3);
 c(2,1) = c112*q_dot(1)+c212*q_dot(2)+c312*q_dot(3);
 c(3,1) = c113*q_dot(1)+c213*q_dot(2)+c313*q_dot(3);
@@ -79,15 +83,17 @@ tau = d*q_2dot+c*q_dot+g;
 % plotODESolve([0,1,0],tau,[theta_1(t) == 0; theta_2(t) == 0; theta_2(t) == 0])
 % plotODESolve([0,0,1],tau,[theta_1(t) == 0; theta_2(t) == 0; theta_2(t) == 0])
 
-tauTest = [1,0,0];
-Theta = [0,0,0,0,0,0];
+tauTest = [1,0,6];
+Theta = [0 0 0 0 0 0] % Initial Conditions T1, DT1, T2, DT2, T3, DT3
+%Theta = [0,0,1.64247225087442,0,1.46621743544426,0]; %Basically no
+% movement, arm fully down
 
 clearvars Data
 TotalSteps = 1;
 LinerazationTimeStepSize = 10;
-Data = [0,0,0,0,0,0]
-t = [0]
-Position = []
+Data = [0,0,0,0,0,0];
+t = [0];
+Position = [];
 
 for i = 1:TotalSteps
     loadingbar.Message = sprintf('Calculating Step %d of %d',i,TotalSteps);
@@ -114,11 +120,26 @@ close(fig)
 Position = zeros(length(Data(:,1)),3)
 for i = 1:length(Data(:,1))
     h = forwardKinematics(Data(i,1),Data(i,3),Data(i,5),d2,d4,a2,a3);
-    Position = [Position; h'];
+    Position(i,:) = h';
 end
 
 figure()
-plot3(Position(:,1),Position(:,2),Position(:,3))
+%plot3(Position(:,1),Position(:,2),Position(:,3))
+%cla
+InterpolationNumber = 3; %for visual clairty on scatter plot
+x = interpn(Position(:,1),InterpolationNumber)
+y = interpn(Position(:,2),InterpolationNumber)
+z = interpn(Position(:,3),InterpolationNumber)
+c = interpn(t,InterpolationNumber)
+scatter3(x,y,z,1,c)
+%patch([x' nan],[y' nan],[z' nan],[t nan],'EdgeColor','interp','FaceColor','none')
+xlabel("x")
+ylabel("y")
+zlabel("z")
+
+figure()
+plot(t,Position(:,1:3))
+legend('x','y','z')
     
 function [t,data,S] = plotODESolve(tauInput,tau,Linearization,Conditions,LinerazationTimeStepSize)
     tauTest = tauInput;%[0;0;0]
