@@ -1,16 +1,15 @@
 close all
 
 syms theta_1(t) theta_2(t) theta_3(t) %real
-%syms q_dot_1 q_dot_2 q_dot_3 real
-%syms q_2dot_1 q_2dot_2 q_2dot_3
 syms d4 d2 a2 a3 %real
+syms t
 
 fig = uifigure;
 loadingbar = uiprogressdlg(fig, 'Title', 'Progress', 'Message','1');
 drawnow
 
 loadingbar.Message = 'Initilizing Robot';
-
+q = [theta_1(t),theta_2(t),theta_3(t)];
 q_2dot = [diff(theta_1(t),2);diff(theta_2(t),2);diff(theta_3(t),2)];
 q_dot  = [diff(theta_1(t),1);diff(theta_2(t),1);diff(theta_3(t),1)];
 
@@ -76,39 +75,132 @@ g(2) = -48.5564*cos(theta_2(t)) + 1.0462*sin(theta_2(t))+.3683*cos(theta_2(t)+th
 g(3) = .3683*cos(theta_2(t)+theta_3(t)) - 10.6528*sin(theta_2(t)+theta_3(t));
 g = g';
 
-tau = d*q_2dot+c*q_dot+g;
+h(1) = a3*cos(theta_1(t))*cos(theta_2(t)+theta_3(t)) + d4*cos(theta_1(t))*sin(theta_2(t)+theta_3(t))+a2*cos(theta_1(t))*cos(theta_2(t))-d2*sin(theta_1(t));
+h(2) = a3*sin(theta_1(t))*cos(theta_2(t)+theta_3(t)) + d4*sin(theta_1(t))*sin(theta_2(t)+theta_3(t))+a2*sin(theta_1(t))*cos(theta_2(t))+d2*cos(theta_1(t));
+h(3) = -a3*sin(theta_2(t)+theta_3(t))+d4*cos(theta_2(t)+theta_3(t))-a2*sin(theta_2(t));
+h = h'
 
-% plotODESolve([0,0,0],tau,[theta_1(t) == 0; theta_2(t) == 0; theta_2(t) == 0])
-% plotODESolve([1,0,0],tau,[theta_1(t) == 0; theta_2(t) == 0; theta_2(t) == 0])
-% plotODESolve([0,1,0],tau,[theta_1(t) == 0; theta_2(t) == 0; theta_2(t) == 0])
-% plotODESolve([0,0,1],tau,[theta_1(t) == 0; theta_2(t) == 0; theta_2(t) == 0])
+tauRight = d*q_2dot+c*q_dot+g;
 
-tauTest = [1,0,6];
+J = [diff(h(1),q(1)),diff(h(1),q(2)),diff(h(1),q(3))
+    diff(h(2),q(1)),diff(h(2),q(2)),diff(h(2),q(3))
+    diff(h(3),q(1)),diff(h(3),q(2)),diff(h(3),q(3))
+    ]
+
+R = .25 %m
+w = pi/4
+Y_d = [-.866*R*cos(rad2deg(w*t))-0.56
+       R*sin(rad2deg(w*t))
+       0.5*R*cos(rad2deg(w*t))-.08]
+
+%Y_d = sym([-0.56; 0; -.08])
+
+
+loadingbar.Message = 'Building u';
+%u = diff(Y_d,2)+K_v*(diff(Y_d)-diff(h'))+K_p*(Y_d-h')
+%u = [0 1 0]'
+loadingbar.Message = 'Building tauLeft';
+%tauLeft = (J/d)*(u-diff(J)*q_dot)+c*q_dot+g
+%tauLeft = [0,0,0]
+syms tauLeft_1 tauLeft_2 tauLeft_3
+tauLeft = [tauLeft_1 tauLeft_2 tauLeft_3]'
+
+%tauTest = [0,40,0];
 Theta = [0 0 0 0 0 0] % Initial Conditions T1, DT1, T2, DT2, T3, DT3
 %Theta = [0,0,1.64247225087442,0,1.46621743544426,0]; %Basically no
 % movement, arm fully down
 
-clearvars Data
-TotalSteps = 1;
-LinerazationTimeStepSize = 10;
-Data = [0,0,0,0,0,0];
-t = [0];
+clearvars VelData
+%TotalSteps = 1;
+%LinerazationTimeStepSize = 1;
+
 Position = [];
 
-for i = 1:TotalSteps
-    loadingbar.Message = sprintf('Calculating Step %d of %d',i,TotalSteps);
-    loadingbar.Value = i/TotalSteps;
+%for i = 1:TotalSteps
+% loadingbar.Message = sprintf('Calculating Step %d of %d',i,TotalSteps);
+% loadingbar.Value = i/TotalSteps;
+
+%LinearizeSpot = [theta_1(t) == Theta(1); theta_2(t) == Theta(3) ;theta_3(t) == Theta(5);];
+tauEqns = [tauLeft(1) == tauRight(1);tauLeft(2) == tauRight(2);tauLeft(3) == tauRight(3)];
+%[t2add,Theta,Meaning] = plotODESolve(tauTest,tau,LinearizeSpot,Theta(length(Theta(:,1)),1:6),LinerazationTimeStepSize);
+loadingbar.Message = 'Linearizing';
+[SymSys,S] = odeToVectorField(tauEqns)%,LinearizeSpot);
+loadingbar.Message = 'Converting Linearization to Function';
+Sys = matlabFunction(SymSys,'vars',{'t','Y','tauLeft_1','tauLeft_2','tauLeft_3'});
+%tspan = [0 LinerazationTimeStepSize];
+%Y0 = Conditions; %[0 0 0 0 0 0]
+%Sys1 = @(t,Y) Sys(Y)
+%%
+loadingbar.Message = 'Solving ODE';
+
+SimulationLength = 0.15;
+SimulationStepSize = .005;
+
+% Starting Position T1 DT1 T2 DT2 T3 DT3
+VelData = [deg2rad(180),0,-deg2rad(45),0,deg2rad(90+45),0];
+TimeData = [0];
+
+% Remake J,d,c,g,h,J_dot for easy substitution
+syms theta_1 theta_1_dot theta_2 theta_2_dot theta_3 theta_3_dot 
+
+diffJ = diff(J)
+diffY_d = diff(Y_d)
+diff2Y_d = diff(Y_d,2)
+diffh = diff(h)
+
+% Tuning Parameters
+K_v = 100 
+K_p = 3000 
+
+for i = 0:SimulationStepSize:SimulationLength-SimulationStepSize
+    tic
+    loadingbar.Value = i/SimulationLength;
+    CurrentVelData = VelData(length(VelData(:,1)),:);
+    theta_1 = CurrentVelData(1);
+    theta_1_dot = CurrentVelData(2);
+    theta_2 = CurrentVelData(3);
+    theta_2_dot = CurrentVelData(4);
+    theta_3 = CurrentVelData(5);
+    theta_3_dot = CurrentVelData(6);
     
-    LinearizeSpot = [theta_1(t) == Theta(1); theta_2(t) == Theta(3) ;theta_3(t) == Theta(5);];
-    [t2add,Theta,Meaning] = plotODESolve(tauTest,tau,LinearizeSpot,Theta(length(Theta(:,1)),1:6),LinerazationTimeStepSize);
+    J_ForCalc = double(subs(subs(subs(subs(subs(subs(J,str2sym('diff(theta_1(t), t)'),theta_1_dot),str2sym('diff(theta_2(t), t)'),theta_2_dot),str2sym('diff(theta_3(t), t)'),theta_3_dot),str2sym('theta_1'),theta_1),str2sym('theta_2'),theta_2),str2sym('theta_3'),theta_3));
+    d_ForCalc = double(subs(subs(subs(subs(subs(subs(d,str2sym('diff(theta_1(t), t)'),theta_1_dot),str2sym('diff(theta_2(t), t)'),theta_2_dot),str2sym('diff(theta_3(t), t)'),theta_3_dot),str2sym('theta_1'),theta_1),str2sym('theta_2'),theta_2),str2sym('theta_3'),theta_3));
+    diffJ_ForCalc = double(subs(subs(subs(subs(subs(subs(diffJ,str2sym('diff(theta_1(t), t)'),theta_1_dot),str2sym('diff(theta_2(t), t)'),theta_2_dot),str2sym('diff(theta_3(t), t)'),theta_3_dot),str2sym('theta_1'),theta_1),str2sym('theta_2'),theta_2),str2sym('theta_3'),theta_3));
+    q_dot_ForCalc = double([theta_1_dot;theta_2_dot;theta_3_dot]);
+    c_ForCalc = double(subs(subs(subs(subs(subs(subs(c,str2sym('diff(theta_1(t), t)'),theta_1_dot),str2sym('diff(theta_2(t), t)'),theta_2_dot),str2sym('diff(theta_3(t), t)'),theta_3_dot),str2sym('theta_1'),theta_1),str2sym('theta_2'),theta_2),str2sym('theta_3'),theta_3));
+    g_ForCalc = double(subs(subs(subs(subs(subs(subs(g,str2sym('diff(theta_1(t), t)'),theta_1_dot),str2sym('diff(theta_2(t), t)'),theta_2_dot),str2sym('diff(theta_3(t), t)'),theta_3_dot),str2sym('theta_1'),theta_1),str2sym('theta_2'),theta_2),str2sym('theta_3'),theta_3));
+    h_ForCalc = double(subs(subs(subs(subs(subs(subs(h,str2sym('diff(theta_1(t), t)'),theta_1_dot),str2sym('diff(theta_2(t), t)'),theta_2_dot),str2sym('diff(theta_3(t), t)'),theta_3_dot),str2sym('theta_1'),theta_1),str2sym('theta_2'),theta_2),str2sym('theta_3'),theta_3));
+    Y_d_ForCalc = double(subs(Y_d,str2sym('t'),i));
+    diffY_d_ForCalc = double(subs(diffY_d,str2sym('t'),i));
+    diff2Y_d_ForCalc = double(subs(diff2Y_d,str2sym('t'),i));
+    diffh_ForCalc = double(subs(subs(subs(subs(subs(subs(diffh,str2sym('diff(theta_1(t), t)'),theta_1_dot),str2sym('diff(theta_2(t), t)'),theta_2_dot),str2sym('diff(theta_3(t), t)'),theta_3_dot),str2sym('theta_1'),theta_1),str2sym('theta_2'),theta_2),str2sym('theta_3'),theta_3));
     
-    Data(length(Data(:,1))+1:length(Data(:,1))+length(Theta(:,1)),1:6) = Theta;
-    t = [t,t2add()'+(i-1)*LinerazationTimeStepSize];
-    fprintf("T: %d D: %d",size(t,2),size(Data,1))
+    u = diff2Y_d_ForCalc+K_v*(diffY_d_ForCalc-diffh_ForCalc)+K_p*(Y_d_ForCalc-h_ForCalc)
+    [diff2Y_d_ForCalc,K_v*(diffY_d_ForCalc-diffh_ForCalc),K_p*(Y_d_ForCalc-h_ForCalc)]
+    %u = normalize(u)
+    %u = [1 0 0]';
+    tauLeft = (d_ForCalc/J_ForCalc)*(u-diffJ_ForCalc*q_dot_ForCalc)+c_ForCalc*q_dot_ForCalc+g_ForCalc;
+    tauLeft_1 = double(tauLeft(1));
+    tauLeft_2 = double(tauLeft(2));
+    tauLeft_3 = double(tauLeft(3));
+    
+    %options = odeset('RelTol',1e-5,'Stats','on','OutputFcn',@odeplot);
+    tspan = [i i+SimulationStepSize];
+    [t,y] = ode23(@(t,Y) Sys(t,Y,tauLeft_1,tauLeft_2,tauLeft_3), tspan, CurrentVelData);%, options);
+    
+    VelData = [VelData;y];%y(length(y(:,1)),[1,3,5])
+    TimeData = [TimeData;t];
+    toc
 end
+    
+loadingbar.Message = 'Displaying';
+%Data(length(Data(:,1))+1:length(Data(:,1))+length(Theta(:,1)),1:6) = Theta;
+%t = [0,t2add()'];
+fprintf("T: %d D: %d",size(t,2),size(VelData,1))
+%end
 
 figure()
-plot(t',Data(:,[1,3,5]))
+plot(TimeData,VelData(:,[1,3,5]))
 legend('Theta_1','Theta_2','Theta_3')
 
 close(loadingbar)
@@ -116,49 +208,45 @@ close(fig)
 
 % Proof that forward kinematics function works properly
 %Data = [zeros(63,1),zeros(63,1),zeros(63,1),zeros(63,1),(0:.1:2*pi)']
-
-Position = zeros(length(Data(:,1)),3)
-for i = 1:length(Data(:,1))
-    h = forwardKinematics(Data(i,1),Data(i,3),Data(i,5),d2,d4,a2,a3);
-    Position(i,:) = h';
+%%
+Position = zeros(length(VelData(:,1)),3);
+for i = 1:length(VelData(:,1))
+    Pos = forwardKinematics(VelData(i,1),VelData(i,3),VelData(i,5),d2,d4,a2,a3);
+    Position(i,:) = Pos';
 end
 
 figure()
 %plot3(Position(:,1),Position(:,2),Position(:,3))
 %cla
-InterpolationNumber = 3; %for visual clairty on scatter plot
-x = interpn(Position(:,1),InterpolationNumber)
-y = interpn(Position(:,2),InterpolationNumber)
-z = interpn(Position(:,3),InterpolationNumber)
-c = interpn(t,InterpolationNumber)
-scatter3(x,y,z,1,c)
+InterpolationNumber = 2; %for visual clairty on scatter plot add extra dots
+% robot plot followed by the target circle
+x = [interpn(Position(:,1),InterpolationNumber),double(subs(Y_d(1),str2sym('t'),1:1:360))];
+y = [interpn(Position(:,2),InterpolationNumber),double(subs(Y_d(2),str2sym('t'),1:1:360))];
+z = [interpn(Position(:,3),InterpolationNumber),double(subs(Y_d(3),str2sym('t'),1:1:360))];
+c = [interpn(TimeData,InterpolationNumber)/10,ones(360,1)'.*100];
+s = [ones(length(interpn(Position(:,1),InterpolationNumber)),1)',ones(360,1)'.*2]
+scatter3(x,y,z,s,c)
 %patch([x' nan],[y' nan],[z' nan],[t nan],'EdgeColor','interp','FaceColor','none')
 xlabel("x")
 ylabel("y")
 zlabel("z")
 
 figure()
-plot(t,Position(:,1:3))
+plot(TimeData,Position(:,1:3))
 legend('x','y','z')
     
-function [t,data,S] = plotODESolve(tauInput,tau,Linearization,Conditions,LinerazationTimeStepSize)
-    tauTest = tauInput;%[0;0;0]
+    %tauTest = tauInput;%[0;0;0]
 
-    tauEqns = [tauTest(1) == tau(1);tauTest(2) == tau(2);tauTest(3) == tau(3)];
-    [SymSys,S] = odeToVectorField(tauEqns,Linearization);
-    Sys = matlabFunction(SymSys,'vars',{'t','Y'});
-    tspan = [0 LinerazationTimeStepSize];
-    Y0 = Conditions; %[0 0 0 0 0 0]
-    %Sys1 = @(t,Y) Sys(Y)
-    %options = odeset('RelTol',1e-5,'Stats','off')%,'OutputFcn',@odeplot)
-    [t,y] = ode45(@(t,Y) Sys(t,Y), tspan, Y0);%, options)
-    data = y;%y(length(y(:,1)),[1,3,5])
+    
+    
 %     figure('Name',strcat('Tau Test: ' , num2str(tauInput)))
 %     plot(t, y)%y(:,[1,3,5]))
 %     grid
-end
 
 % testing
+
+
+
 
 function [h] = forwardKinematics(theta1,theta2,theta3,d2,d4,a2,a3)
 
