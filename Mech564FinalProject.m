@@ -1,3 +1,4 @@
+% ---- Mech564FinalProject ----
 close all
 
 syms theta_1(t) theta_2(t) theta_3(t) %real
@@ -88,7 +89,10 @@ J = [diff(h(1),q(1)),diff(h(1),q(2)),diff(h(1),q(3))
     ]
 
 R = .25 %m
+
 w = pi/4
+%w = pi/2
+
 Y_d = [-.866*R*cos(rad2deg(w*t))-0.56
        R*sin(rad2deg(w*t))
        0.5*R*cos(rad2deg(w*t))-.08]
@@ -133,12 +137,18 @@ Sys = matlabFunction(SymSys,'vars',{'t','Y','tauLeft_1','tauLeft_2','tauLeft_3'}
 %%
 loadingbar.Message = 'Solving ODE';
 
-SimulationLength = 0.15;
-SimulationStepSize = .005;
+SimulationLength = 0.2;
+SimulationStepSize = .001;
 
 % Starting Position T1 DT1 T2 DT2 T3 DT3
-VelData = [deg2rad(180),0,-deg2rad(45),0,deg2rad(90+45),0];
+%VelData = [deg2rad(180),0,-deg2rad(45),0,deg2rad(90+45),0];
+
+VelData = [2.948,0,5.733,0,2.598,0]; %Case 1,3
+%VelData = [3.041,0,5.308,0,3.562,0]; %Case 2,4
+
 TimeData = [0];
+Error = [];
+Error_Dot = [];
 
 % Remake J,d,c,g,h,J_dot for easy substitution
 syms theta_1 theta_1_dot theta_2 theta_2_dot theta_3 theta_3_dot 
@@ -149,8 +159,8 @@ diff2Y_d = diff(Y_d,2)
 diffh = diff(h)
 
 % Tuning Parameters
-K_v = 100 
-K_p = 3000 
+K_v = 200 
+K_p = 25000 
 
 for i = 0:SimulationStepSize:SimulationLength-SimulationStepSize
     tic
@@ -178,7 +188,7 @@ for i = 0:SimulationStepSize:SimulationLength-SimulationStepSize
     u = diff2Y_d_ForCalc+K_v*(diffY_d_ForCalc-diffh_ForCalc)+K_p*(Y_d_ForCalc-h_ForCalc)
     [diff2Y_d_ForCalc,K_v*(diffY_d_ForCalc-diffh_ForCalc),K_p*(Y_d_ForCalc-h_ForCalc)]
     %u = normalize(u)
-    %u = [1 0 0]';
+    %u = [0 0 1]';
     tauLeft = (d_ForCalc/J_ForCalc)*(u-diffJ_ForCalc*q_dot_ForCalc)+c_ForCalc*q_dot_ForCalc+g_ForCalc;
     tauLeft_1 = double(tauLeft(1));
     tauLeft_2 = double(tauLeft(2));
@@ -192,23 +202,31 @@ for i = 0:SimulationStepSize:SimulationLength-SimulationStepSize
     TimeData = [TimeData;t];
     toc
 end
-    
+
+%Duplicate the first number to be the same size as t
+
 loadingbar.Message = 'Displaying';
 %Data(length(Data(:,1))+1:length(Data(:,1))+length(Theta(:,1)),1:6) = Theta;
 %t = [0,t2add()'];
 fprintf("T: %d D: %d",size(t,2),size(VelData,1))
 %end
 
+close(loadingbar)
+close(fig)
+%%
+
+
 figure()
 plot(TimeData,VelData(:,[1,3,5]))
 legend('Theta_1','Theta_2','Theta_3')
+xlabel("Time (s)")
+ylabel("Rotation (rad)")
 
-close(loadingbar)
-close(fig)
+
 
 % Proof that forward kinematics function works properly
 %Data = [zeros(63,1),zeros(63,1),zeros(63,1),zeros(63,1),(0:.1:2*pi)']
-%%
+
 Position = zeros(length(VelData(:,1)),3);
 for i = 1:length(VelData(:,1))
     Pos = forwardKinematics(VelData(i,1),VelData(i,3),VelData(i,5),d2,d4,a2,a3);
@@ -218,35 +236,61 @@ end
 figure()
 %plot3(Position(:,1),Position(:,2),Position(:,3))
 %cla
-InterpolationNumber = 2; %for visual clairty on scatter plot add extra dots
+InterpolationNumber = 1; %for visual clairty on scatter plot add extra dots
 % robot plot followed by the target circle
-x = [interpn(Position(:,1),InterpolationNumber),double(subs(Y_d(1),str2sym('t'),1:1:360))];
-y = [interpn(Position(:,2),InterpolationNumber),double(subs(Y_d(2),str2sym('t'),1:1:360))];
-z = [interpn(Position(:,3),InterpolationNumber),double(subs(Y_d(3),str2sym('t'),1:1:360))];
-c = [interpn(TimeData,InterpolationNumber)/10,ones(360,1)'.*100];
-s = [ones(length(interpn(Position(:,1),InterpolationNumber)),1)',ones(360,1)'.*2]
+x = [interpn(Position(:,1),InterpolationNumber)];%,double(subs(Y_d(1),str2sym('t'),1:1:360))];
+y = [interpn(Position(:,2),InterpolationNumber)];%,double(subs(Y_d(2),str2sym('t'),1:1:360))];
+z = [interpn(Position(:,3),InterpolationNumber)];%,double(subs(Y_d(3),str2sym('t'),1:1:360))];
+c = [interpn(TimeData,InterpolationNumber)*500];%,ones(360,1)'.*100];
+s = [ones(length(interpn(Position(:,1),InterpolationNumber)),1)'];%,ones(360,1)'.*2]
 scatter3(x,y,z,s,c)
 %patch([x' nan],[y' nan],[z' nan],[t nan],'EdgeColor','interp','FaceColor','none')
-xlabel("x")
-ylabel("y")
-zlabel("z")
+xlabel("x (m)")
+ylabel("y (m)")
+zlabel("z (m)")
 
 figure()
 plot(TimeData,Position(:,1:3))
 legend('x','y','z')
+xlabel("Time (s)")
+ylabel("Relative Position (m)")
     
-    %tauTest = tauInput;%[0;0;0]
+Y_d_Data = []
+diffY_d_Data = []
+h_diff = diff(h)
+Velocity = []
 
+for i = 1:length(TimeData)
+    Time = TimeData(i);
+    Y_d_ForCalc = double(subs(Y_d,str2sym('t'),Time))';
+    Y_d_Data = [Y_d_Data;Y_d_ForCalc];
+    diffY_d_ForCalc = double(subs(diffY_d,str2sym('t'),Time));
+    diffY_d_Data = [diffY_d_Data;diffY_d_ForCalc'];
     
+    theta_1 = VelData(i,1);
+    theta_1_dot = VelData(i,2);
+    theta_2 = VelData(i,3);
+    theta_2_dot = VelData(i,4);
+    theta_3 = VelData(i,5);
+    theta_3_dot = VelData(i,6);
+    diffh_ForCalc = double(subs(subs(subs(subs(subs(subs(diffh,str2sym('diff(theta_1(t), t)'),theta_1_dot),str2sym('diff(theta_2(t), t)'),theta_2_dot),str2sym('diff(theta_3(t), t)'),theta_3_dot),str2sym('theta_1'),theta_1),str2sym('theta_2'),theta_2),str2sym('theta_3'),theta_3));
+    Velocity = [Velocity;diffh_ForCalc'];
     
-%     figure('Name',strcat('Tau Test: ' , num2str(tauInput)))
-%     plot(t, y)%y(:,[1,3,5]))
-%     grid
+end
 
-% testing
+Error = Y_d_Data-Position
+figure()
+plot(TimeData,Error)
+xlabel("Time (s)")
+ylabel("Error (m)")
+legend('x','y','z')
 
-
-
+Error_dot = diffY_d_Data-Velocity
+figure()
+plot(TimeData,Error_dot)
+xlabel("Time (s)")
+ylabel("Error (m/s)")
+legend('x','y','z')
 
 function [h] = forwardKinematics(theta1,theta2,theta3,d2,d4,a2,a3)
 
