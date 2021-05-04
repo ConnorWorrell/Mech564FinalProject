@@ -1,0 +1,173 @@
+---
+title: "Mech 564 Final Project Report"
+author: "Connor Worrell"
+date: "5/3/2021"
+output: pdf_document
+header-includes:
+  \usepackage{setspace}
+  \usepackage{indentfirst}
+  \renewcommand{\and}{\\}
+  \usepackage{booktabs}
+  \usepackage{nameref}
+  \usepackage{siunitx}
+  \usepackage{amsmath}
+  \usepackage{paralist}
+  \let\itemize\compactitem
+indent: true
+fontsize: 12pt
+---
+
+\doublespacing
+\setlength\parindent{24pt}
+
+# Introduciton
+For this project I started by inputting the dynamics model for the robot that was given. I then added a function to convert the robot position to the position of the end effector in Cartesian coordinates. Using these two I attempted to visually verify that the dynamics model was correct. Then I implemented a task level controller, and verified that it was working correctly visually. Then I implemented the given controller model, and attempted to tune it to track the circular function.
+
+# Dynamics Model of the Robot
+I modeled the dynamics of this robot using the given dynamics equations. I used Matlab's symbolic variables to symbolically solve for D, c, g, and Y. I then used the Matlab built in odeToVectorField and matlabFunction to prepare the symbolic functions to be input into the ODE solver. Initially I used ODE45, but switched to ODE23 because it had faster solve times with minimal performance degradation. I then recorded the output of the ODE solver, and used the h function to convert them to Cartesian. I tested this model using $\tau = [1, 0, 0]^T$. The output plots for this model calculated over 10 seconds are shown in figure \ref{fig:NoFThe} - \ref{fig:NoFPos3D}.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.65\linewidth]{NoFeedBackTheta.jpg}
+\caption{No Control - Joint Angles}
+\label{fig:NoFThe}
+\end{center}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.65\linewidth]{NoFeedBackPos.jpg}
+\caption{No Control - Cartesian Position of End Effector}
+\label{fig:NoFPos}
+\end{center}
+\end{figure}
+
+I think that figure \ref{fig:NoFPos3D} shows the best visualization of the end effector. In this figure the line represents the location of the end effector, and the color represents the time between 0 seconds (Blue) and 10 seconds (Light Yellow). The end effector appears to drop down, and go through a motion that is very chaotic. I believe that this motion is the correct motion, because the end effector would be expected to crumple under its own weight without any motor power keeping it up, and links 2 and 3 of the robot arm resemble a double pendulum, which is know for its random and chaotic motion. On top of this the motion of joint 1 can be explained by the torque applied by the momentum of links 2 and 3, as well as the applied torque by the input $\tau$. These two effects added together give a sinusoidal-ish wave (momentum) that rises exponentially ($\tau$)
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.65\linewidth]{NoFeedBackPos3D.jpg}
+\caption{No Control - Cartesian Position of End Effector 3D}
+\label{fig:NoFPos3D}
+\end{center}
+\end{figure}
+
+# Controller Simulation
+To simulate the controller, I modeled the nonlinear controller equation using symbolic functions. Initially I attempted to build the controller and robot dynamics simulation into the same ODE, and while Matlab's ODE solver was able to solve it, it took a long time. Because of this I decided to descritize the nonlinear controller, and use the ODE solver to solve many small steps where I numerically recalculate the nonlinear controller equation between each of these. I then tested the non-linear controller by using $u = [1,0,0]^T$, $u = [0,1,0]^T$,$u = [0,0,1]^T$. Teh results for this are shown in figures \ref{fig:ControlTestX} - \ref{fig:ControlTestZ}
+
+In these results I would expect the graph to show the driven axis increasing, and the two other axes remaining unchanged. This is true for the tests with the exception of the very end of the X and Z tests, this is because the robot hit the edge of its work area and the controller became unstable. This section can be ignored.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.65\linewidth]{FeedBackTestX.jpg}
+\caption{Controller X Position Test}
+\label{fig:ControlTestX}
+\end{center}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.65\linewidth]{FeedBackTestY.jpg}
+\caption{Controller Y Position Test}
+\label{fig:ControlTestY}
+\end{center}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.65\linewidth]{FeedBackTestZ.jpg}
+\caption{Controller Z Position Test}
+\label{fig:ControlTestZ}
+\end{center}
+\end{figure}
+
+# Tracking a Trajectory
+In order to track the tilted circle trajectory that was given, I implemented the linear controller from class and tuned the response to be quick. The tuned response parameters are listed in table \ref{tab:TuningParam}.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Tuning Parameters}
+\label{tab:TuningParam}
+\begin{tabular}{l|l}
+\toprule
+Parameter& Value\\
+\midrule
+$K_v$&200\\
+$K_p$&25000\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+For the four test cases I calculated the $\theta_1$-$\theta_3$ required to satisfy the initial conditions given in 4.2.3. I used EES to solve for the initial conditions, and they are listed in table \ref{tab:IntialConditions}.
+
+
+\begin{table}[ht]
+\begin{center}
+\caption{Initial Positon}
+\label{tab:IntialConditions}
+\begin{tabular}{l|c|c|c|c}
+\toprule
+Case& $\theta_1(0)$&$\theta_2(0)$&$\theta_3(0)$&$\omega$\\
+\midrule
+1&2.948&5.733&2.598&$\pi$/2\\
+2&3.041&5.308&3.562&$\pi$/2\\
+3&2.948&5.733&2.598&$\pi$/4\\
+4&3.041&5.308&3.562&$\pi$/4\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+For each of the cases listed in table \ref{tab:TuningParam}, I simulated from 0-.2 seconds using a .001 time-step. The graphs for each case can be found in figures \ref{fig:Case1}-\ref{fig:Case4}. In these figure blue represents 0 seconds and yellow represents .2 seconds
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.45\linewidth]{Case1VError.jpg}
+\includegraphics[width=0.45\linewidth]{Case1PError.jpg}
+\includegraphics[width=0.75\linewidth]{Case1Pos3D}
+\caption{Case 1}
+\label{fig:Case1}
+\end{center}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.45\linewidth]{Case2VError.jpg}
+\includegraphics[width=0.45\linewidth]{Case2PError.jpg}
+\includegraphics[width=0.75\linewidth]{Case2Pos3D}
+\caption{Case 2}
+\label{fig:Case2}
+\end{center}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.45\linewidth]{Case3VError.jpg}
+\includegraphics[width=0.45\linewidth]{Case3PError.jpg}
+\includegraphics[width=0.75\linewidth]{Case3Pos3D}
+\caption{Case 3}
+\label{fig:Case3}
+\end{center}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.45\linewidth]{Case4VError.jpg}
+\includegraphics[width=0.45\linewidth]{Case4PError.jpg}
+\includegraphics[width=0.75\linewidth]{Case4Pos3D}
+\caption{Case 4}
+\label{fig:Case4}
+\end{center}
+\end{figure}
+
+# Discussion
+The decoupling was achieved by using the Non-Linear Feedback equation form class. This was verified to be working when testing various inputs for "u" in figures \ref{fig:ControlTestX} - \ref{fig:ControlTestY}. In these figures it is seen that position in the stationary dimensions was unaffected by the movement of the moving dimension.
+The linearization of the error was achieved by using the Linear Controller discussed in class. This controller inputs error, and outputs the direction of motion for the end-effector. This was verified to be working by using Cases 1-4. The controller was able to calculate the proper direction to move using the error.
+The robot's initial position and velocity have no long term effect on the errors. The starting position has an effect on the velocity error, both Case 1 and 3 have much smaller velocity errors than Cases 2 and 4. A starting position further away from he target has a larger initial error. When the target was spinning faster, the errors in position were larger even after "steady state" was reached, this can be seen when comparing the position error of \ref{fig:Case3} and \ref{fig:Case1}. 
+This simulation is not perfect, and there are a few modeling errors that would cause deviations form real world results. These deviations would be cause by the lack of joint friction in this model, the descretization of the linear controller and non-linear feedback, and errors in the numeric approximation of the ODE solver.
+
+# Appendix
+\singlespacing
+```{octave, code = readLines("Mech564FinalProject.m"), eval = FALSE}
+```
