@@ -168,6 +168,7 @@ The robot's initial position and velocity have no long term effect on the errors
 This simulation is not perfect, and there are a few modeling errors that would cause deviations form real world results. These deviations would be cause by the lack of joint friction in this model, the descretization of the linear controller and non-linear feedback, and errors in the numeric approximation of the ODE solver.
 
 # Appendix
+## A - Matlab Code
 \singlespacing
 ```{octave, code = readLines("Mech564FinalProject.m"), eval = FALSE}
 ```
