@@ -42,7 +42,7 @@ I modeled the dynamics of this robot using the given dynamics equations. I used 
 \end{center}
 \end{figure}
 
-I think that figure \ref{fig:NoFPos3D} shows the best visualization of the end effector. In this figure the line represents the location of the end effector, and the color represents the time between 0 seconds (Blue) and 10 seconds (Light Yellow). The end effector appears to drop down, and go through a motion that is very chaotic. I believe that this motion is the correct motion, because the end effector would be expected to crumple under its own weight without any motor power keeping it up, and links 2 and 3 of the robot arm resemble a double pendulum, which is know for its random and chaotic motion. On top of this the motion of joint 1 can be explained by the torque applied by the momentum of links 2 and 3, as well as the applied torque by the input $\tau$. These two effects added together give a sinusoidal-ish wave (momentum) that rises exponentially ($\tau$)
+I think that figure \ref{fig:NoFPos3D} shows the best visualization of the end effector. In this figure the line represents the location of the end effector, and the color represents the time between 0 seconds (Blue) and 10 seconds (Light Yellow). The end effector appears to drop down, and go through a motion that is very chaotic. I believe that this motion is the correct motion, because the end effector would be expected to crumple under its own weight without any motor power keeping it up, and links 2 and 3 of the robot arm resemble a double pendulum, which is know for its random and chaotic motion. On top of this the motion of joint 1 can be explained by the torque applied by the momentum of links 2 and 3, as well as the applied torque by the input $\tau$. These two effects added together give a sinusoidal-ish wave (momentum) that rises exponentially ($\tau$).
 
 \begin{figure}
 \begin{center}
@@ -53,7 +53,7 @@ I think that figure \ref{fig:NoFPos3D} shows the best visualization of the end e
 \end{figure}
 
 # Controller Simulation
-To simulate the controller, I modeled the nonlinear controller equation using symbolic functions. Initially I attempted to build the controller and robot dynamics simulation into the same ODE, and while Matlab's ODE solver was able to solve it, it took a long time. Because of this I decided to descritize the nonlinear controller, and use the ODE solver to solve many small steps where I numerically recalculate the nonlinear controller equation between each of these. I then tested the non-linear controller by using $u = [1,0,0]^T$, $u = [0,1,0]^T$,$u = [0,0,1]^T$. Teh results for this are shown in figures \ref{fig:ControlTestX} - \ref{fig:ControlTestZ}
+To simulate the controller, I modeled the nonlinear controller equation using symbolic functions. Initially I attempted to build the controller and robot dynamics simulation into the same ODE, and while Matlab's ODE solver was able to solve it, it took a long time. Because of this I decided to descritize the nonlinear controller, and use the ODE solver to solve many small steps where I numerically recalculate the nonlinear controller equation between each of these. I then tested the non-linear controller by using $u = [1,0,0]^T$, $u = [0,1,0]^T$,$u = [0,0,1]^T$. Teh results for this are shown in figures \ref{fig:ControlTestX} - \ref{fig:ControlTestZ}.
 
 In these results I would expect the graph to show the driven axis increasing, and the two other axes remaining unchanged. This is true for the tests with the exception of the very end of the X and Z tests, this is because the robot hit the edge of its work area and the controller became unstable. This section can be ignored.
 
@@ -119,7 +119,7 @@ Case& $\theta_1(0)$&$\theta_2(0)$&$\theta_3(0)$&$\omega$\\
 \end{center}
 \end{table}
 
-For each of the cases listed in table \ref{tab:TuningParam}, I simulated from 0-.2 seconds using a .001 time-step. The graphs for each case can be found in figures \ref{fig:Case1}-\ref{fig:Case4}. In these figure blue represents 0 seconds and yellow represents .2 seconds
+For each of the cases listed in table \ref{tab:TuningParam}, I simulated from 0-.2 seconds using a .001 time-step. The graphs for each case can be found in figures \ref{fig:Case1}-\ref{fig:Case4}. In these figure blue represents 0 seconds and yellow represents .2 seconds.
 
 \begin{figure}
 \begin{center}
@@ -164,7 +164,7 @@ For each of the cases listed in table \ref{tab:TuningParam}, I simulated from 0-
 # Discussion
 The decoupling was achieved by using the Non-Linear Feedback equation form class. This was verified to be working when testing various inputs for "u" in figures \ref{fig:ControlTestX} - \ref{fig:ControlTestY}. In these figures it is seen that position in the stationary dimensions was unaffected by the movement of the moving dimension.
 The linearization of the error was achieved by using the Linear Controller discussed in class. This controller inputs error, and outputs the direction of motion for the end-effector. This was verified to be working by using Cases 1-4. The controller was able to calculate the proper direction to move using the error.
-The robot's initial position and velocity have no long term effect on the errors. The starting position has an effect on the velocity error, both Case 1 and 3 have much smaller velocity errors than Cases 2 and 4. A starting position further away from he target has a larger initial error. When the target was spinning faster, the errors in position were larger even after "steady state" was reached, this can be seen when comparing the position error of \ref{fig:Case3} and \ref{fig:Case1}. 
+The robot's initial position and velocity have no long term effect on the errors. The starting position has an effect on the velocity error, both Case 1 and 3 have much smaller velocity errors than Cases 2 and 4. A starting position further away from he target has a larger initial error. When the target was spinning faster, the errors in position were larger even after "steady state" was reached, this can be seen when comparing the position error of figures \ref{fig:Case1} and \ref{fig:Case3}. 
 This simulation is not perfect, and there are a few modeling errors that would cause deviations form real world results. These deviations would be cause by the lack of joint friction in this model, the descretization of the linear controller and non-linear feedback, and errors in the numeric approximation of the ODE solver.
 
 # Appendix
