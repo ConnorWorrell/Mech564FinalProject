@@ -14,7 +14,7 @@ header-includes:
   \usepackage{paralist}
   \let\itemize\compactitem
 indent: true
-fontsize: 12pt
+fontsize: 11pt
 ---
 
 \doublespacing
@@ -70,7 +70,7 @@ Figure \ref{fig:NoFPos3D} shows the best visualization of the end effector. In t
 \end{figure}
 
 # Controller Simulation
-To simulate the controller, the nonlinear controller equation shown in equation \ref{eqn:noncontrol} was modeled using symbolic functions, where J is the Jacobian which can be calculated from Y. This equation calculates $\tau$ such that it compensates for the C and q terms in the robot dynamics equation shown in equation \ref{eqn:dynmodl}, and uses the Jacobian to calculate the force on the links required to move the end effector in the direction of "u". "u" is shown in equation \ref{eqn:u}, and represents the desired acceleration and direction of the end effector in the x, y, and z axes.
+To simulate the controller, the nonlinear controller equation shown in equation \ref{eqn:noncontrol} was modeled using symbolic functions, where J is the Jacobian which can be calculated from Y. This equation calculates $\tau$ such that it decouples $\tau$ from "u" by compensating for the C and q terms in the robot dynamics equation shown in equation \ref{eqn:dynmodl}, and uses the Jacobian to calculate the force on the links required to move the end effector in the direction of "u". "u" is shown in equation \ref{eqn:u}, and represents the desired acceleration and direction of the end effector in the x, y, and z axes.
 
 \begin{equation}
 \tau = D(q) J_h(q)^{-1}(u-\dot{J}_h(q)\dot{q}) +C(q,\dot{q})\dot{q}+g(q)
@@ -83,7 +83,7 @@ u=\begin{bmatrix} u_{x}\\u_{y}\\u_{z}
 \label{eqn:u}
 \end{equation}
 
-Initially the controller and robot dynamics simulation were built into the same ODE, and while Matlab's ODE solver was able to solve it, it took a long time. Because of this the nonlinear controller was discretized, and used the ODE23 solver to solve many small steps, between these steps the nonlinear controller equation was numerically recalculated. Then the non-linear controller was tested by using $u = [1,0,0]^T$, $u = [0,1,0]^T$,$u = [0,0,1]^T$ as test cases. The results for this are shown in figures \ref{fig:ControlTestX} - \ref{fig:ControlTestZ}.
+Initially the controller and robot dynamics simulation were built into the same ODE, and while Matlab's ODE solver was able to solve it, it took a long time. Because of this the nonlinear controller was discretized, and used the ODE23 solver to solve between timesteps, where the nonlinear controller equation was numerically recalculated. This increased the solution speed at the expense of evaluating D, J, u, C and g as constants for each timespan the ODE solver calculates over. The controller was tested by using $u = [1,0,0]^T$, $u = [0,1,0]^T$,$u = [0,0,1]^T$ as test cases. The results for this are shown in figures \ref{fig:ControlTestX} - \ref{fig:ControlTestZ}.
  
 \begin{figure}
 \begin{center}
@@ -155,6 +155,18 @@ Case& $\theta_1(0)$&$\theta_2(0)$&$\theta_3(0)$&$\omega$\\
 \end{center}
 \end{table}
 
+A flowchart showing the calculation process is shown in figure \ref{fig:flow}.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\linewidth]{FlowChart.jpg}
+\caption{Calculation Flow Chart}
+\label{fig:flow}
+\end{center}
+\end{figure}
+
+\newpage
+
 For each of the cases, The simulation was run from 0-0.2 seconds using a 0.001 time-step. The graphs for position error, velocity error, and a 3D graph of the end effector position for each case are shown in figures \ref{fig:Case1}-\ref{fig:Case4}. The 3D graphs represent the position of the end effector in 3D space, from 0 seconds (Blue) to 0.2 seconds (Yellow).
 
 \begin{figure}
@@ -200,7 +212,7 @@ For each of the cases, The simulation was run from 0-0.2 seconds using a 0.001 t
 \newpage
 # Discussion
 The decoupling was achieved by using the Non-Linear Feedback equation. This was verified to be working when testing various inputs for "u" in figures \ref{fig:ControlTestX} - \ref{fig:ControlTestZ}. In these figures it is seen that position in the stationary dimensions was unaffected by the movement of the moving dimension.
-The linearization of the error was achieved by using the Linear Controller. This controller inputs the position and velocity errors, and outputs the direction of motion for the end-effector. This was verified to be working by using Cases 1-4 seen in figures \ref{fig:Case1}-\ref{fig:Case4}. The controller was able to calculate the proper direction to move the end effector using the error.
+The linearization of the controller was achieved by using the jacobian as an approximation for how each link joint affects the end effector position. This method dosen't take into consideration the rotational dynamics of the links, instead assuming that the jacobian evaluated at small enough time steps is an appropirate approximation. This allows for "u" to be used as an input for where the end effector should move, and evaluate $\tau$ to find the forces that should be applied to the links. This was verified to be working by using Cases 1-4 seen in figures \ref{fig:Case1}-\ref{fig:Case4}. The controller was able to calculate the proper direction to move the end effector using the error and the forces were applied to the link joints in steps small enough to approximate the rotational dynamics of the links.
 
 The robot's initial position and velocity have no long term effect on the errors. The starting position has an effect on the initial overshoot, this can be seen when comparing cases 1 and 3 to cases 2 and 4. Cases 1 and 3 have much smaller position and velocity overshoot errors than cases 2 and 4. A starting position further away from he target causes a larger initial position error, and a larger position and velocity overshoot. When the target was spinning faster, the errors in position and velocity were larger even after "steady state" was reached, this can be seen when comparing the position and velocity errors of figures \ref{fig:Case1} and \ref{fig:Case3}. 
 
