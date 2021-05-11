@@ -1,7 +1,7 @@
 ---
 title: "Mech 564 Final Project Report"
 author: "Connor Worrell"
-date: "5/3/2021"
+date: "5/10/2021"
 output: pdf_document
 header-includes:
   \usepackage{setspace}
@@ -12,6 +12,7 @@ header-includes:
   \usepackage{siunitx}
   \usepackage{amsmath}
   \usepackage{paralist}
+  \usepackage{subcaption}
   \let\itemize\compactitem
 indent: true
 fontsize: 11pt
@@ -22,7 +23,7 @@ fontsize: 11pt
 
 # Introduciton
 The purpose of this project is to develop and simulate a controller for the first 3 links of the robot shown in figure \ref{fig:robot}.
-For this project the dynamics model for the robot was constructed in Matlab. Then a function was added to convert the link angles to the position of the end effector in Cartesian coordinates. Then a task level controller was implemented, and verified to be working correctly by visual inspection and the model was tuned to respond quickly with minimal overshoot. Four test scenarios were conducted on the modeled system to test it's response.
+For this project the dynamics model for the robot were constructed in Matlab. Then a function was added to convert the link angles to the position of the end effector in Cartesian coordinates. Then a task level controller was implemented, and verified to be working correctly by visual inspection and the model was tuned to respond quickly with minimal overshoot. Four test scenarios were conducted on the modeled system to test it's response.
 
 \singlespacing
 \begin{figure}
@@ -35,7 +36,7 @@ For this project the dynamics model for the robot was constructed in Matlab. The
 
 \doublespacing
 # Dynamics Model of the Robot
-The dynamics of this robot were modeled as matrices using the dynamics equations given in the problem statement for D, C, and g. Matlab's symbolic variables were used to symbolically solve for the D, C and g matricies. These matrices were then input into the dynamics model shown in equation \ref{eqn:dynmodl}. The Matlab built-in odeToVectorField and matlabFunction functions were used to convert the symbolic dynamics model to a state space form anonymous function to be input into the ODE solver. Initially the ODE45 function was used, but it was switched to ODE23 because it had faster solve times with minimal performance degradation. Then the output of the ODE solver, was used in equation \ref{eqn:h} to convert joint angles to Cartesian coordinates, where $a_3$, $d_4$, $a_2$, and $d_2$ are properties of the robot listed in figure \ref{fig:robot}. This model was tested using $\tau = [1, 0, 0]^T$. The joint angle and end effector position plots for this model were calculated over 10 seconds and are shown in figure \ref{fig:NoFThe}. 
+The dynamics of this robot were modeled as matrices using the dynamics equations given in the problem statement for D, C, and g. Matlab's symbolic variables were used to symbolically solve for the D, C and g matricies. These matrices were then input into the dynamics model shown in equation \ref{eqn:dynmodl}. The Matlab built-in odeToVectorField and matlabFunction functions were used to convert the symbolic dynamics model to a state space form anonymous function to be input into the ODE solver. Initially the ODE45 function was used, but it was switched to ODE23 because it had faster solve times with minimal performance degradation. Then the output of the ODE solver, was used in equation \ref{eqn:h} to convert joint angles to Cartesian coordinates, where $a_3$, $d_4$, $a_2$, and $d_2$ are properties of the robot listed in figure \ref{fig:robot}. $\tau$ represents the angular force on the robot's joints. This model was tested using $\tau = [1, 0, 0]^T$. The joint angle and end effector position plots for this model were calculated over 10 seconds and are shown in figure \ref{fig:NoFThe}. 
 
 \singlespacing
 \begin{equation}
@@ -55,8 +56,16 @@ sin(q_1)(a_3cos(q_2+q_3)+d_4sin(q_2+q_3)+a_2cos(q_2))-d_2cos(q_1)\\
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.49\linewidth]{NoFeedBackTheta.jpg}
-\includegraphics[width=0.49\linewidth]{NoFeedBackPos.jpg}
+\begin{subfigure}{0.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{NoFeedBackTheta.jpg}
+  \caption{Link rotation}
+\end{subfigure}%
+\begin{subfigure}{0.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{NoFeedBackPos.jpg}
+  \caption{End-effector position}
+\end{subfigure}
 \caption{No Control - Joint Angles and End Effector Position}
 \label{fig:NoFThe}
 \end{center}
@@ -93,23 +102,31 @@ u=\begin{bmatrix} u_{x}\\u_{y}\\u_{z}
 
 \doublespacing
 Initially the controller and robot dynamics simulation were built into the same ODE, and while Matlab's ODE solver was able to solve it, it took a long time. Because of this the controller was discretized, and used the ODE23 solver to solve between timesteps, where the controller equation was numerically recalculated. This increased the solution speed at the expense of evaluating $\tau$ as constant for each timespan the ODE solver calculates over. The controller was tested by using $u = [1,0,0]^T$, $u = [0,1,0]^T$,$u = [0,0,1]^T$ as test cases. The results for this are shown in figures \ref{fig:ControlTestX} - \ref{fig:ControlTestZ}.
- 
-\singlespacing
+
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.49\linewidth]{FeedBackTestX.jpg}
-\caption{Controller X Position Test}
-\label{fig:ControlTestX}
-\includegraphics[width=0.49\linewidth]{FeedBackTestY.jpg}
-\caption{Controller Y Position Test}
-\label{fig:ControlTestY}
-\includegraphics[width=0.49\linewidth]{FeedBackTestZ.jpg}
-\caption{Controller Z Position Test}
-\label{fig:ControlTestZ}
+\begin{subfigure}{0.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{FeedBackTestX.jpg}
+  \caption{Controller X Position Test}
+  \label{fig:ControlTestX}
+\end{subfigure}
+\begin{subfigure}{0.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{FeedBackTestY.jpg}
+  \caption{Controller Y Position Test}
+  \label{fig:ControlTestY}
+\end{subfigure}
+\begin{subfigure}{0.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{FeedBackTestZ.jpg}
+  \caption{Controller Z Position Test}
+  \label{fig:ControlTestZ}
+\end{subfigure}
+\caption{Controller Test}
 \end{center}
 \end{figure}
- 
-\doublespacing
+
 In these results it would be expected that the graphs show the driven axis increasing, and the two other axes remaining unchanged. This is true for the tests with the exception of the very end of the X and Z tests, this is because the robot hit the edge of its work area and the controller became unstable. This section can be ignored. This test verifies that the control of the position of the end effector was decoupled from the robot since the position of the end effector in the x, y, and z axis can be controlled individually. 
 
 \newpage
@@ -149,7 +166,6 @@ $K_p$&25000\\
 
 \doublespacing
 A flowchart for the calculation process is shown in figure \ref{fig:flow}.
-
 \singlespacing
 \begin{figure}
 \begin{center}
@@ -186,9 +202,21 @@ For each of the cases, The simulation was run from 0-0.2 seconds using a 0.001 t
 \singlespacing
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.49\linewidth]{Case1VError.jpg}
-\includegraphics[width=0.49\linewidth]{Case1PError.jpg}
-\includegraphics[width=0.8\linewidth]{Case1Pos3D}
+\begin{subfigure}{.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{Case1VError.jpg}
+  \caption{Velocity Error}
+\end{subfigure}%
+\begin{subfigure}{.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{Case1PError.jpg}
+  \caption{Position Error}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=0.8\linewidth]{Case1Pos3D}
+  \caption{Position 3D}
+\end{subfigure}
 \caption{Case 1}
 \label{fig:Case1}
 \end{center}
@@ -196,9 +224,21 @@ For each of the cases, The simulation was run from 0-0.2 seconds using a 0.001 t
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.49\linewidth]{Case2VError.jpg}
-\includegraphics[width=0.49\linewidth]{Case2PError.jpg}
-\includegraphics[width=0.8\linewidth]{Case2Pos3D}
+\begin{subfigure}{.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{Case2VError.jpg}
+  \caption{Velocity Error}
+\end{subfigure}%
+\begin{subfigure}{.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{Case2PError.jpg}
+  \caption{Position Error}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=0.8\linewidth]{Case2Pos3D}
+  \caption{Position 3D}
+\end{subfigure}
 \caption{Case 2}
 \label{fig:Case2}
 \end{center}
@@ -206,9 +246,21 @@ For each of the cases, The simulation was run from 0-0.2 seconds using a 0.001 t
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.49\linewidth]{Case3VError.jpg}
-\includegraphics[width=0.49\linewidth]{Case3PError.jpg}
-\includegraphics[width=0.8\linewidth]{Case3Pos3D}
+\begin{subfigure}{.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{Case3VError.jpg}
+  \caption{Velocity Error}
+\end{subfigure}%
+\begin{subfigure}{.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{Case3PError.jpg}
+  \caption{Position Error}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=0.8\linewidth]{Case3Pos3D}
+  \caption{Position 3D}
+\end{subfigure}
 \caption{Case 3}
 \label{fig:Case3}
 \end{center}
@@ -216,9 +268,21 @@ For each of the cases, The simulation was run from 0-0.2 seconds using a 0.001 t
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.49\linewidth]{Case4VError.jpg}
-\includegraphics[width=0.49\linewidth]{Case4PError.jpg}
-\includegraphics[width=0.8\linewidth]{Case4Pos3D}
+\begin{subfigure}{.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{Case4VError.jpg}
+  \caption{Velocity Error}
+\end{subfigure}%
+\begin{subfigure}{.5\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{Case4PError.jpg}
+  \caption{Position Error}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=0.8\linewidth]{Case4Pos3D}
+  \caption{Position 3D}
+\end{subfigure}
 \caption{Case 4}
 \label{fig:Case4}
 \end{center}
